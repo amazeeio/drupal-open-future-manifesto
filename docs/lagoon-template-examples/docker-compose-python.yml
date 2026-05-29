@@ -1,0 +1,49 @@
+version: '2.3'
+
+services:
+  # SERVICE: Python container running a FastAPI backend
+  python:
+    env_file:
+      - .lagoon.env
+    networks:
+      - amazeeio-network
+      - default
+    build:
+      context: .
+      dockerfile: lagoon/python.dockerfile
+    labels:
+      lagoon.type: python
+    # In development, override the CMD to enable hot reload.
+    # Remove this in production — the Dockerfile CMD handles it.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+
+  # SERVICE: Node container for a Next.js frontend (if decoupled)
+  # Remove this service if the project is backend-only.
+  node:
+    env_file:
+      - .lagoon.env
+    networks:
+      - amazeeio-network
+      - default
+    build:
+      context: .
+      dockerfile: lagoon/node.dockerfile
+    labels:
+      lagoon.type: node
+
+  # SERVICE: PostgreSQL database
+  # Remove this service if the project does not use a database.
+  postgres:
+    image: uselagoon/postgres-16-drupal:latest
+    labels:
+      lagoon.type: postgres
+    networks:
+      - default
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-localpassword}"
+      POSTGRES_USER: "${POSTGRES_USER:-app}"
+      POSTGRES_DB: "${POSTGRES_DB:-app}"
+
+networks:
+  amazeeio-network:
+    external: true

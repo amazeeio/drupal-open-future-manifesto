@@ -1,0 +1,21 @@
+version: '2.3'
+
+services:
+  # SERVICE: Node container for running nextjs
+  node:
+    env_file:
+      - .lagoon.env
+    networks:
+      - amazeeio-network
+      - default
+    build:
+      context: .
+      dockerfile: lagoon/node.dockerfile
+    labels:
+      lagoon.type: node
+#    volumes:
+#      - .:/app:delegated
+
+networks:
+  amazeeio-network:
+    external: true

@@ -1,0 +1,64 @@
+name: Dependency Vulnerability Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+
+jobs:
+  scan-python:
+    name: Python (pip-audit)
+    runs-on: ubuntu-latest
+    # Remove or skip this job if the project has no Python backend
+    if: ${{ hashFiles('requirements.txt') != '' || hashFiles('backend/requirements.txt') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Python dependencies (root)
+        if: ${{ hashFiles('requirements.txt') != '' }}
+        run: pip-audit --strict -r requirements.txt
+
+      - name: Audit Python dependencies (backend/)
+        if: ${{ hashFiles('backend/requirements.txt') != '' }}
+        run: pip-audit --strict -r backend/requirements.txt
+
+  scan-node:
+    name: Node.js (npm audit)
+    runs-on: ubuntu-latest
+    # Remove or skip this job if the project has no Node/frontend code
+    if: ${{ hashFiles('package.json') != '' || hashFiles('frontend/package.json') != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies (root)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci
+
+      - name: Audit Node dependencies (root)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm audit --audit-level=high
+
+      - name: Install dependencies (frontend/)
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend
+        run: npm ci
+
+      - name: Audit Node dependencies (frontend/)
+        if: ${{ hashFiles('frontend/package.json') != '' }}
+        working-directory: frontend
+        run: npm audit --audit-level=high
