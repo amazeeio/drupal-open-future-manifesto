@@ -54,7 +54,7 @@ export const beliefs = [
   },
   {
     lead: "Drupal is built to be AI-native and AI-friendly.",
-    body: "Open, structured, sovereign, secure — with the right adjustments, it is, by design, the CMS the next generation of intelligent systems should choose."
+    body: "Open, structured, sovereign, secure — with the right adjustments, it is, by design, the open foundation for the world's data and structured knowledge the next generation of intelligent systems should choose."
   },
   {
     lead: "A new generation of Drupalpreneurs is on the horizon.",
