@@ -22,8 +22,6 @@ This project is built on the amazee.io platform (Lagoon hosting). The full agent
 
 ## Auth
 
-- **Any Lagoon deployment must have a login gate**, even pre-production. A simple credentials login (email + bcrypt password) is the minimum before the first deploy.
-- **Okta SSO is required before production goes live.** See `docs/security/okta-oauth-implementation-guide.md`.
 - Use **Auth.js v5** (`next-auth@beta`) for Next.js projects.
 - `trustHost: true` in `auth.ts` + `AUTH_TRUST_HOST=1` in Lagoon variables — both required.
 

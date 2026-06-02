@@ -41,8 +41,6 @@ These rules apply to every line of code you write. Do not wait to be asked.
 
 ### Authentication & Authorization
 
-- **Any deployment to Lagoon — including dev or pre-production — must have at minimum a simple credentials login gate.** An unauthenticated Lagoon deployment is never acceptable, even if Okta SSO is a later step. Implement a basic email/password admin login (bcrypt-hashed, cost ≥12) before the first deploy. See the "Adding Authentication" workflow below.
-- **Okta SSO is required before production goes live.** The credentials login is a temporary bridge — disable it once Okta is working. See `docs/security/okta-oauth-implementation-guide.md`.
 - **Every API endpoint must check authentication before doing anything else.** No unauthenticated access to data, even read-only data, unless the endpoint is explicitly designed to be public.
 - **Access control is enforced server-side, always.** Frontend-only guards (hidden buttons, conditional rendering) are not access control.
 - **Deny by default.** Routes allow only what is explicitly permitted; everything else is 401/403.
@@ -86,25 +84,44 @@ These rules apply to every line of code you write. Do not wait to be asked.
 
 The project deploys on Lagoon (amazee.io managed hosting).
 
+### Current Live Deployment
+
+- **Organization:** `drupal-community`
+- **Project:** `drupal-open-future-manifesto`
+- **Deploy target:** `us2.amazee.io` (deploy target ID `126`)
+- **Production environment:** `master`
+- **Live route:** `https://node.master.drupal-open-future-manifesto.us2.amazee.io`
+- **Repository remote:** `https://github.com/amazeeio/drupal-open-future-manifesto.git`
+
 ### Key Patterns
 
 - **Local development** uses Docker with the `amazeeio-network`. Do not use `localhost` — use the Docker hostname (e.g. `<appname>.docker.amazee.io`).
 - **Dockerfiles** should use official Lagoon base images: `uselagoon/node-24`, `uselagoon/node-24-builder`, `uselagoon/python-3.12`, etc. See `docs/lagoon-template-examples/` for working examples.
 - **Environment variables** are set in Lagoon per-environment. After adding variables, a **redeploy** is required.
 - **Secrets are never baked into Docker images.** The container receives them at runtime as env vars.
+- **This repo deploys `master`, not `main`.** Do not use `-e main` or `-b main` when operating on the live environment for this project.
+- **The public route is service-prefixed on `us2`.** Use the actual assigned route from `lagoon list environments -p drupal-open-future-manifesto`, not the generic `main`/`ch4` example pattern.
 
 ### Setting Variables via CLI
 
 ```bash
-lagoon add variable -p <project-name> -e main -N VARIABLE_NAME -V value -S global
+lagoon add variable -p drupal-open-future-manifesto -e master -N VARIABLE_NAME -V value -S global
 ```
 
 After adding variables, trigger a redeploy.
 
 ### Production URL Pattern
 
+Generic example from the platform docs:
+
 ```
 https://node.main.<project-name>.ch4.amazee.io
+```
+
+Actual live route for this project:
+
+```bash
+https://node.master.drupal-open-future-manifesto.us2.amazee.io
 ```
 
 ### Auth.js + Lagoon
@@ -114,6 +131,30 @@ When using Auth.js v5 behind Lagoon's reverse proxy, **both** of the following a
 1. `trustHost: true` in `auth.ts`
 2. `AUTH_TRUST_HOST=1` as a Lagoon environment variable
 
+For this project, `NEXTAUTH_URL` must match the actual assigned Lagoon route exactly:
+
+```bash
+https://node.master.drupal-open-future-manifesto.us2.amazee.io
+```
+
+Do not set it to the shorter `https://master.drupal-open-future-manifesto.us2.amazee.io` hostname — that route returned Lagoon's generic ingress error page during deployment and caused incorrect auth redirects.
+
+### Database Runtime Notes
+
+- Lagoon provisions PostgreSQL for this project as `postgres-dbaas` and injects `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DATABASE`, `POSTGRES_USERNAME`, and `POSTGRES_PASSWORD` into the workload.
+- The node startup scripts in [lagoon/scripts/next-run.sh](/Users/michael/git/drupal-open-future-manifesto/lagoon/scripts/next-run.sh) and [lagoon/scripts/next-dev.sh](/Users/michael/git/drupal-open-future-manifesto/lagoon/scripts/next-dev.sh) derive `DATABASE_URL` from those injected values at runtime.
+- If auth or Prisma fails on Lagoon, check the node logs first:
+
+```bash
+lagoon logs -p drupal-open-future-manifesto -e master -s node -n 200
+```
+
+- If you need to inspect the effective environment inside the live node container, use a one-off task:
+
+```bash
+lagoon run custom -p drupal-open-future-manifesto -e master -N "Inspect node env" -S node -c 'env | sort | grep -E "POSTGRES|DATABASE_URL|AUTH_" || true'
+```
+
 ---
 
 ## Okta SSO Setup
@@ -122,7 +163,7 @@ When using Auth.js v5 behind Lagoon's reverse proxy, **both** of the following a
 
 Tell IT:
 - Local redirect URI: `http://<appname>.docker.amazee.io/api/auth/callback/okta`
-- Production redirect URI: `https://node.main.<project-name>.ch4.amazee.io/api/auth/callback/okta`
+- Production redirect URI: `https://node.master.drupal-open-future-manifesto.us2.amazee.io/api/auth/callback/okta`
 - Token auth method: `client_secret_post`
 - Which Okta groups need access
 
@@ -155,6 +196,8 @@ Do this **before the first Lagoon deploy**, even if Okta is not ready yet.
 4. Ask the user for an admin password, hash it in the terminal (`node -e "require('bcryptjs').hash('THEIR_PASSWORD', 12).then(console.log)"`), and write only the hash to `.env.local` as `ADMIN_PASSWORD_HASH`. Never store the plaintext.
 5. Add `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `AUTH_SECRET`, and `AUTH_TRUST_HOST=1` to Lagoon variables before the first deploy
 6. Once Okta is live and users have access, disable credentials login: set `NEXT_PUBLIC_ADMIN_LOGIN_DISABLED=true` in Lagoon and redeploy
+
+Important for this repo: when setting `ADMIN_PASSWORD_HASH` via shell, quote the hash value so the `$2b$...` bcrypt string is not mangled by shell expansion.
 
 ### Adding a Database (PostgreSQL)
 

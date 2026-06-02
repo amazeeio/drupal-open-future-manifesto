@@ -10,13 +10,18 @@ Delete placeholder text and replace with your actual choices. Keep this file upd
 
 ## Overview
 
-> _Describe what this project is in 2–3 sentences: what problem it solves, who uses it, and what kind of system it is (e.g. "A Next.js web application deployed on Lagoon that provides X for Y users. It has a Node backend, a PostgreSQL database, and authenticates via Okta SSO.")_
+This project is a simple manifesto website for Drupal Pivot. It presents the text of "A Manifesto for an Open Future" as a public-facing landing page and includes a TypeScript-backed signature form for collecting supporters' details.
 
 ---
 
 ## Architecture
 
-> _Describe the high-level architecture: is it a monolith, a decoupled frontend/backend, a monorepo? What are the main services?_
+Monolith. The frontend and backend live in a single Next.js App Router application:
+
+- The public site is rendered by Next.js server components.
+- Form submissions are handled by a Next.js route handler written in TypeScript.
+- Signatures are stored in PostgreSQL via Prisma.
+- The repository includes Lagoon-ready Docker Compose and container files for local and hosted environments.
 
 **Example patterns:**
 - **Decoupled** — separate frontend (Next.js) and backend (FastAPI or Express) services, each with their own Lagoon container
@@ -62,105 +67,91 @@ These are the preferred choices for new amazee.io projects. You may deviate with
 
 ## This Project's Stack
 
-> _Replace the table below with your actual choices once decided._
-
 | Layer | Choice | Version | Notes |
 |---|---|---|---|
-| _e.g. Framework_ | _e.g. Next.js_ | _e.g. 15.x_ | _e.g. App Router_ |
-| _Language_ | | | |
-| _Styling_ | | | |
-| _Database_ | | | |
-| _Auth_ | | | |
-| _Deployment_ | Lagoon | — | amazee.io managed |
+| Framework | Next.js | 15.x | App Router monolith |
+| Language | TypeScript | 5.x | Strict mode enabled |
+| Styling | Global CSS | — | Editorial layout matched to the supplied manifesto design |
+| Persistence | PostgreSQL + Prisma | PostgreSQL 16 / Prisma 6.x | `Signature` records stored in Postgres |
+| Auth | Not implemented | — | Required before any protected Lagoon deployment |
+| Deployment | Lagoon | — | Local Docker Compose plus Lagoon Node and Postgres services |
 
 ---
 
 ## Project Structure
 
-> _Document the actual directory layout here once the project is scaffolded. Example:_
-
 ```
+prisma/
+  migrations/             # Prisma SQL migrations for PostgreSQL
+  schema.prisma           # Prisma schema and data source
+lagoon/
+  node.dockerfile         # Lagoon production image for the Next.js app
+  scripts/                # Build and runtime scripts for Lagoon and local Docker
 src/
-  app/              # Next.js App Router pages and layouts
-  components/       # Shared UI components
-  lib/              # Server utilities, auth helpers, DB client
-  types/            # Shared TypeScript interfaces
-public/             # Static assets
-lagoon/             # Lagoon Dockerfiles and scripts
-docs/               # This documentation
+  app/                    # Page layout, home page, and API routes
+    api/signatures/       # TypeScript route handler for form submissions
+  components/             # Shared UI components
+  lib/                    # Manifesto content, Prisma client, and signature helpers
+data/
+  signatures.json         # Legacy JSON store imported automatically on first Postgres boot
+docs/                     # Project and platform documentation
 ```
 
 ---
 
 ## Running Locally
 
-> _Fill in the actual commands for this project._
-
 ```bash
 # Install dependencies
-npm install        # or: pnpm install
+npm install
+
+# Generate the Prisma client
+npm run db:generate
+
+# Apply the committed migration to a configured Postgres database
+npm run db:migrate
 
 # Start development server
 npm run dev
 
-# Run tests
-npm test
+# Start the Lagoon-style local stack
+docker compose up --build
+
+# Run TypeScript checks
+npm run typecheck
 
 # Build for production
 npm run build
 ```
 
 **Prerequisites:**
-- Node 20+ (or match the Lagoon base image version)
-- Docker + the amazeeio-network for local Lagoon development
-- `.env.local` file — copy from `.env.example` and fill in values
+- Node 20+
+- PostgreSQL if running outside Docker Compose
+- `.env.local` with `DATABASE_URL` when running the app directly on the host
 
 ---
 
 ## Environment Variables
 
-> _List every environment variable the project requires. Use `.env.example` as the canonical source._
-
-See `.env.example` for the full list. Key variables:
+See `.env.example` for the full list. The current site now requires `DATABASE_URL` to read and write signatures, and Docker Compose can also consume the optional `POSTGRES_*` variables for local database defaults.
 
 | Variable | Required | Description |
 |---|---|---|
-| `AUTH_SECRET` | Yes | Auth.js signing secret — generate with `openssl rand -base64 32` |
-| `OKTA_CLIENT_ID` | Yes (prod) | From IT — see Okta guide |
-| `OKTA_CLIENT_SECRET` | Yes (prod) | From IT — see Okta guide |
-| `OKTA_ISSUER` | Yes (prod) | From IT — e.g. `https://login.yourcompany.io` |
-| `DATABASE_URL` | If using DB | PostgreSQL connection string |
+| `AUTH_SECRET` | Future auth work | Auth.js signing secret |
+| `OKTA_CLIENT_ID` | Future auth work | Okta application client ID |
+| `OKTA_CLIENT_SECRET` | Future auth work | Okta application client secret |
+| `OKTA_ISSUER` | Future auth work | Okta issuer URL |
+| `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
+| `POSTGRES_DB` | Docker Compose only | Local Postgres database name override |
+| `POSTGRES_USER` | Docker Compose only | Local Postgres user override |
+| `POSTGRES_PASSWORD` | Docker Compose only | Local Postgres password override |
 
 Never commit real values. Add all secrets to Lagoon environment variables for production.
 
 ---
 
-## Persistence Requirement (Not Yet Implemented)
-
-The current prototype loses all state on page refresh — task statuses, deadlines, and SLA data are reset to hardcoded defaults in `src/data/`.
-
-**A PostgreSQL database will be required** before this tool can be used in production. Specifically, the following state needs to be persisted server-side:
-
-| Data | Current location | Must persist in DB |
-|---|---|---|
-| Task status per customer | `CustomerProfile.taskStatuses` (hardcoded) | Yes |
-| Task deadlines per customer | `CustomerProfile.taskDeadlines` (hardcoded) | Yes |
-| SLA breach records | `CustomerProfile.slaBreaches` (hardcoded) | Yes |
-| Customer profiles (name, tier, package, CEM/TAM assignment, dates) | `src/data/customers.ts` (hardcoded) | Yes |
-| Onboarding creation (smart pruning decisions) | Ephemeral in `NewOnboardingModal.tsx` | Yes |
-
-PostgreSQL is the preferred choice because:
-- It is a first-class citizen on the Lagoon platform (available as DBaaS via RDS/Cloud SQL — see [hosting-on-lagoon.md](hosting-on-lagoon.md))
-- The Lagoon `amazeeio/postgres` image handles local dev parity automatically
-- Structured relational data (customers → tasks → statuses/deadlines) maps cleanly to a relational schema
-
-**This will require a backend API** (e.g. a Node/Express or similar service) to sit between the React frontend and the database. The frontend currently calls no APIs.
-- `activeProfileId` — which customer is open in the cockpit
-- `selectedTask` — which task node is selected in the DAG (drives the left panel detail view)
-- `toasts` — ephemeral action feedback messages
-
----
-
 ## Deployment
 
-Static build output. `npm run build` produces a `dist/` folder that can be served from any static host (Netlify, Vercel, GitHub Pages, an S3 bucket, etc.). No server-side runtime required.
+This project requires a Node runtime because the signature form posts to a server-side route handler and reads signatures from PostgreSQL through Prisma. `npm run build` creates a production build for a Next.js server deployment, while `lagoon/node.dockerfile`, `docker-compose.yml`, and `.lagoon.yml` provide the Lagoon deployment entry points.
+
+Before a Lagoon deployment, revisit the repository security requirements in `CLAUDE.md`, especially the authentication requirements for non-local environments.
