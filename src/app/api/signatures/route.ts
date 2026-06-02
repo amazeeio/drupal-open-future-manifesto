@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
 import { signatureSchema } from "@/lib/signature-schema";
 import { saveSignature } from "@/lib/signature-store";
 
@@ -44,12 +43,6 @@ function getClientKey(forwardedFor: string | null) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-
-  if (!session?.user) {
-    return buildResponse({ error: "Unauthorized." }, 401);
-  }
-
   const requestHeaders = await headers();
   const clientKey = getClientKey(requestHeaders.get("x-forwarded-for"));
 
