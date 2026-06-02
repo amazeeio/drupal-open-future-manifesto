@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { seedSignatories } from "@/lib/manifesto";
 import type { SignatureRecord } from "@/lib/signature-schema";
 
 import { SignatureForm } from "./signature-form";
@@ -13,33 +12,24 @@ type SignaturesSectionProps = {
 
 export function SignaturesSection({ initialSignatures }: SignaturesSectionProps) {
   const [signatures, setSignatures] = useState(initialSignatures);
-  const [signatureCount, setSignatureCount] = useState(seedSignatories.length + initialSignatures.length);
+  const [signatureCount, setSignatureCount] = useState(initialSignatures.length);
   const [freshSignatureId, setFreshSignatureId] = useState<string | null>(null);
   const [hasSigned, setHasSigned] = useState(false);
 
   function handleSigned(payload: { signature: SignatureRecord; signatureCount: number }) {
-    setSignatureCount(seedSignatories.length + payload.signatureCount);
+    setSignatureCount(payload.signatureCount);
     setSignatures((currentSignatures) => [payload.signature, ...currentSignatures]);
     setFreshSignatureId(payload.signature.id);
     setHasSigned(true);
   }
 
-  const visibleSignatories = [
-    ...signatures.map((signature) => ({
+  const visibleSignatories = signatures.map((signature) => ({
       id: signature.id,
       name: signature.name,
       title: signature.role,
       company: signature.company,
       isFresh: signature.id === freshSignatureId
-    })),
-    ...seedSignatories.map((signature, index) => ({
-      id: `seed-${index}`,
-      name: signature.name,
-      title: signature.title,
-      company: signature.company,
-      isFresh: false
-    }))
-  ];
+    }));
 
   return (
     <>
