@@ -18,5 +18,7 @@ EOF
 fi
 
 npx prisma migrate deploy
-npm run db:import-json
+if [ "${LAGOON_ENVIRONMENT_TYPE:-}" != "production" ]; then
+	npm run db:import-json
+fi
 exec npm run start -- --hostname 0.0.0.0 --port 3000
