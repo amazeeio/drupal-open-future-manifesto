@@ -1,1 +1,9 @@
 docker-compose-yaml: docker-compose.yml
+
+environments:
+	master:
+		routes:
+			- node:
+				- "drupal-open-future-manifesto.com":
+						tls-acme: true
+						insecure: Redirect
