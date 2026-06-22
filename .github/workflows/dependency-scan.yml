@@ -16,7 +16,7 @@ jobs:
     # Remove or skip this job if the project has no Python backend
     if: ${{ hashFiles('requirements.txt') != '' || hashFiles('backend/requirements.txt') != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -39,7 +39,7 @@ jobs:
     # Remove or skip this job if the project has no Node/frontend code
     if: ${{ hashFiles('package.json') != '' || hashFiles('frontend/package.json') != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
