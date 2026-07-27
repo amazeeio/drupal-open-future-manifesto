@@ -13,7 +13,7 @@
     "db:import-json": "node scripts/import-json-signatures.mjs"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^7.9.0",
     "next": "^15.3.3",
     "prisma": "^6.19.3",
     "react": "^19.0.0",
